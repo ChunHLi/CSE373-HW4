@@ -4,6 +4,7 @@
 
 #include "bool.h"
 #include "queue.h" 
+#include "backtrack.h"
 
 typedef struct {
 	int y;
@@ -37,6 +38,7 @@ process_vertex(int v)
 {
 printf("processed vertex %d",v);
 }
+
 process_edge(int x, int y)
 {
 }
@@ -109,19 +111,75 @@ bfs(graph *g, int start)
 	}
 }
 
-connected_components(graph *g)
+bool finished = FALSE;			/* found all solutions yet? */
+int max_dist;
+int s[NMAX+1];
+
+process_solution(int a[], int k, graph *g)
 {
-	int c;
 	int i;
-	initialize_search(g);
-	c = 0;
-	for (i=1; i<=g->nvertices; i++)
-		if (discovered[i] == FALSE){
-			c = c+1;
-			printf("Component %d: ",c);
-			bfs(g,i);
-			printf("\n");
+	int b[NMAX+1];
+	for (i=1; i<=k; i++) {
+		 b[a[i]] = i;
+	}
+	int j;
+	for (j=1; j<=k; j++) {
+		int v = a[j];
+		edgenode *curr_edges = g->edges[v];
+		int len = g->degree[v];
+		int v_max_dist = -1;
+		while (curr_edges != NULL){
+			if (abs(j - b[curr_edges->y]) > v_max_dist) {
+				v_max_dist = abs(j-b[curr_edges->y]);
+			} 
+			curr_edges = curr_edges->next;
 		}
+		if (max_dist > v_max_dist) {
+			max_dist = v_max_dist;
+			memcpy(s,a,sizeof(s));
+		}
+		
+	}
+}
+
+is_a_solution(int a[], int k, int n)
+{
+	return (k == n);
+}
+
+construct_candidates(int a[], int k, int n, int c[], int *ncandidates)
+{
+	int i;				/* counter */
+	bool in_perm[NMAX];		/* what is now in the permutation? */
+
+	for (i=1; i<NMAX; i++) in_perm[i] = FALSE;
+	for (i=1; i<k; i++) in_perm[ a[i] ] = TRUE;
+
+	*ncandidates = 0;
+	for (i=1; i<=n; i++) 
+		if (in_perm[i] == FALSE) {
+			c[ *ncandidates] = i;
+			*ncandidates = *ncandidates + 1;
+		}
+}
+
+backtrack(int a[], int k, graph *g)
+{
+        int c[MAXCANDIDATES];           /* candidates for next position */
+        int ncandidates;                /* next position candidate count */
+        int i;                          /* counter */
+	int v = g->nvertices;
+        if (is_a_solution(a,k,v))
+                process_solution(a,k,g);
+        else {
+                k = k+1;
+                construct_candidates(a,k,v,c,&ncandidates);
+                for (i=0; i<ncandidates; i++) {
+                        a[k] = c[i];
+                        backtrack(a,k,g);
+                        if (finished) return;   /* terminate early */
+                }
+        }
 }
 
 main() 
@@ -129,6 +187,7 @@ main()
 
 	graph g;
 	read_graph(&g,FALSE);
-	connected_components(&g);
-
+	int a[NMAX+1];
+	backtrack(a,0,&g);	
+	
 }
