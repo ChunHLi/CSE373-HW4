@@ -3,10 +3,10 @@
 #define MAXV 5000
 
 #include "bool.h"
-#include "queue.h" 
 #include "backtrack.h"
 
 typedef struct {
+	int x;
 	int y;
 	int weight;
 	struct edgenode *next;
@@ -18,6 +18,8 @@ typedef struct {
 	int nvertices;
 	int nedges;
 	bool directed;
+	int max_degree;
+	int min_pos_bandwidth;
 } graph;
 
 bool processed[MAXV];	/* which vertices have been processed */
@@ -29,6 +31,7 @@ initialize_graph(graph *g, bool directed)
 	int i;
 	g -> nvertices = 0;
 	g -> nedges = 0;
+	g -> max_degree = 0;
 	g -> directed = directed;
 	for (i=1; i<=MAXV; i++) g->degree[i] = 0;
 	for (i=1; i<=MAXV; i++) g->edges[i] = NULL;
@@ -46,14 +49,22 @@ process_edge(int x, int y)
 read_graph(graph *g, bool directed)
 {
 	int i;
+	int j;
 	int m;
 	int x, y;
 	initialize_graph(g, directed);
-	scanf("%d %d",&(g->nvertices),&m);
+	scanf("%d",&(g->nvertices));
+	scanf("%d",&m);
 	for (i=1; i<=m; i++){
 		scanf("%d %d",&x,&y);
 		insert_edge(g,x,y,directed);
 	}
+	for (j = 1; j <= g->nvertices; j++){
+		if (g->max_degree < g->degree[j]){
+			g->max_degree = g->degree[j];
+		}
+	}
+	g -> min_pos_bandwidth = (g -> max_degree + 1)/2;
 }
 
 insert_edge(graph *g, int x, int y, bool directed)
@@ -61,6 +72,7 @@ insert_edge(graph *g, int x, int y, bool directed)
 	edgenode *p;
 	p = malloc(sizeof(edgenode));
 	p -> weight = NULL;
+	p -> x = x;
 	p -> y = y;
 	p -> next = g -> edges[x];
 	
@@ -83,62 +95,36 @@ initialize_search(graph *g)
 	}
 }
 
-bfs(graph *g, int start)
-{
-	queue q;
-	int v;
-	int y;
-	edgenode *p;
-	init_queue(&q);
-	enqueue(&q,start);
-	discovered[start] = TRUE;
-	while (empty(&q) == FALSE){
-		v = dequeue(&q);
-		printf("%d ", v);
-		processed[v] = TRUE;
-		p = g->edges[v];
-		while (p != NULL) {
-			y = p->y;
-			if ((processed[y] == FALSE)|| g -> directed)
-				process_edge(v,y);
-			if (discovered[y] == FALSE){
-				enqueue(&q,y);
-				discovered[y] = TRUE;
-				parent[y] = v;
-			}
-			p = p->next;
-		}
-	}
-}
-
 bool finished = FALSE;			/* found all solutions yet? */
-int max_dist;
+int max_dist = 50000;
 int s[NMAX+1];
 
 process_solution(int a[], int k, graph *g)
 {
 	int i;
 	int b[NMAX+1];
-	for (i=1; i<=k; i++) {
-		 b[a[i]] = i;
-	}
+	for (i=1; i<=k; i++) b[a[i]] = i;
 	int j;
+	int v_max_dist = -1;
 	for (j=1; j<=k; j++) {
-		int v = a[j];
-		edgenode *curr_edges = g->edges[v];
-		int len = g->degree[v];
-		int v_max_dist = -1;
+		edgenode *curr_edges = g->edges[a[j]];	
 		while (curr_edges != NULL){
-			if (abs(j - b[curr_edges->y]) > v_max_dist) {
-				v_max_dist = abs(j-b[curr_edges->y]);
+			int curr_dist = abs(j - b[curr_edges->y]);
+			if (curr_dist > v_max_dist) {
+				v_max_dist = curr_dist;
+				if (v_max_dist >= max_dist){
+					break;
+				}
 			} 
 			curr_edges = curr_edges->next;
 		}
-		if (max_dist > v_max_dist) {
-			max_dist = v_max_dist;
-			memcpy(s,a,sizeof(s));
-		}
-		
+	}
+	if (v_max_dist == g->min_pos_bandwidth) {
+		finished = TRUE;
+	}
+	if (max_dist > v_max_dist) {
+		max_dist = v_max_dist;
+		memcpy(s,a,sizeof(s));
 	}
 }
 
@@ -184,10 +170,14 @@ backtrack(int a[], int k, graph *g)
 
 main() 
 {
-
 	graph g;
 	read_graph(&g,FALSE);
 	int a[NMAX+1];
 	backtrack(a,0,&g);	
-	
+	printf("Minimum Bandwidth: %d\n", max_dist);
+	int nv = g.nvertices;
+	int c;
+	for (c = 1; c <= nv; c++) {
+		printf("%d ", s[c]);
+	}	
 }
