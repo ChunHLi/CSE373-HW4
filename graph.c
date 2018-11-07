@@ -98,34 +98,37 @@ initialize_search(graph *g)
 bool finished = FALSE;			/* found all solutions yet? */
 int max_dist = 50000;
 int s[NMAX+1];
+int nvertices_;
+int nvertices__;
 
 process_solution(int a[], int k, graph *g)
 {
+	if (finished) return;
 	int i;
-	int b[NMAX+1];
+	int b[nvertices__];
 	for (i=1; i<=k; i++) b[a[i]] = i;
 	int j;
 	int v_max_dist = -1;
 	for (j=1; j<=k; j++) {
 		edgenode *curr_edges = g->edges[a[j]];	
-		while (curr_edges != NULL){
-			int curr_dist = abs(j - b[curr_edges->y]);
-			if (curr_dist > v_max_dist) {
-				v_max_dist = curr_dist;
-				if (v_max_dist >= max_dist){
-					break;
+		while (curr_edges != NULL){ 
+			if (abs(j - b[curr_edges->y] > v_max_dist)) {
+				v_max_dist = abs(j - b[curr_edges->y]);
+				if (g->nvertices/2 <= v_max_dist || max_dist <= v_max_dist){
+					goto skip;
 				}
 			} 
 			curr_edges = curr_edges->next;
-		}
+		}	
 	}
-	if (v_max_dist == g->min_pos_bandwidth) {
+	if (v_max_dist <= g->min_pos_bandwidth) {
 		finished = TRUE;
 	}
 	if (max_dist > v_max_dist) {
 		max_dist = v_max_dist;
 		memcpy(s,a,sizeof(s));
 	}
+	skip: ;
 }
 
 is_a_solution(int a[], int k, int n)
@@ -135,10 +138,11 @@ is_a_solution(int a[], int k, int n)
 
 construct_candidates(int a[], int k, int n, int c[], int *ncandidates)
 {
-	int i;				/* counter */
-	bool in_perm[NMAX];		/* what is now in the permutation? */
+	if (finished) return;
+	int i;
+	bool in_perm[nvertices__];
 
-	for (i=1; i<NMAX; i++) in_perm[i] = FALSE;
+	for (i=1; i<nvertices__; i++) in_perm[i] = FALSE;
 	for (i=1; i<k; i++) in_perm[ a[i] ] = TRUE;
 
 	*ncandidates = 0;
@@ -150,8 +154,8 @@ construct_candidates(int a[], int k, int n, int c[], int *ncandidates)
 }
 
 backtrack(int a[], int k, graph *g)
-{
-        int c[MAXCANDIDATES];           /* candidates for next position */
+{	
+        int c[nvertices_];           /* candidates for next position */
         int ncandidates;                /* next position candidate count */
         int i;                          /* counter */
 	int v = g->nvertices;
@@ -172,12 +176,13 @@ main()
 {
 	graph g;
 	read_graph(&g,FALSE);
-	int a[NMAX+1];
+	int a[g.nvertices+1];
+	nvertices_ = g.nvertices;
+	nvertices__ = nvertices_ + 1;
 	backtrack(a,0,&g);	
 	printf("Minimum Bandwidth: %d\n", max_dist);
-	int nv = g.nvertices;
 	int c;
-	for (c = 1; c <= nv; c++) {
+	for (c = 1; c <= nvertices_; c++) {
 		printf("%d ", s[c]);
 	}	
 }
